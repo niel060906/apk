@@ -1,0 +1,6 @@
+{
+  "name": "Music Premium",
+  "description": "Native premium music streaming application built in Kotlin Jetpack Compose replicating Apple Music iOS UI with blazing fast offline caching and background playback.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
