@@ -11,11 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.ui.MainViewModel
+import com.example.ui.home.EmptyState
 import com.example.ui.home.SongListItem
 
 @Composable
 fun FavoriteScreen(viewModel: MainViewModel) {
     val favorites by viewModel.favoriteSongs.collectAsState()
+    val currentSong by viewModel.playerController.currentSong.collectAsState()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -29,8 +31,18 @@ fun FavoriteScreen(viewModel: MainViewModel) {
             )
         }
 
-        items(favorites) { song ->
-            SongListItem(song = song, onClick = { viewModel.playSong(song) })
+        if (favorites.isEmpty()) {
+            item {
+                EmptyState(message = "No favorite songs yet. Start adding your favorites!")
+            }
+        } else {
+            items(favorites) { song ->
+                SongListItem(
+                    song = song,
+                    isNowPlaying = song.videoId == currentSong?.videoId,
+                    onClick = { viewModel.playSong(song) }
+                )
+            }
         }
     }
 }

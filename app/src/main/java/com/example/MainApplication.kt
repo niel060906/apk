@@ -1,9 +1,9 @@
 package com.example
 
 import android.app.Application
+import android.util.Log
 import com.example.di.AppContainer
 import com.google.firebase.FirebaseApp
-import com.google.firebase.FirebaseOptions
 
 class MainApplication : Application() {
     
@@ -14,17 +14,13 @@ class MainApplication : Application() {
         container = AppContainer(this)
         
         try {
+            // Firebase will auto-initialize from google-services.json
+            // ✅ REMOVED hardcoded credentials - use google-services.json instead
             if (FirebaseApp.getApps(this).isEmpty()) {
-                val options = FirebaseOptions.Builder()
-                    .setApiKey("AIzaSyChJUtOEnYGW9iryHYqst2ql-oNDdJyysw")
-                    .setApplicationId("1:457308432728:web:01568ae63de26444105d2d")
-                    .setProjectId("marketplace-ea770")
-                    .setStorageBucket("marketplace-ea770.firebasestorage.app")
-                    .build()
-                FirebaseApp.initializeApp(this, options)
+                FirebaseApp.initializeApp(this)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("MainApplication", "Firebase initialization error", e)
         }
     }
 }

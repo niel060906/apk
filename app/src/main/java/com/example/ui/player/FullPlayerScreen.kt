@@ -1,5 +1,7 @@
 package com.example.ui.player
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.ui.MainViewModel
+import com.example.ui.theme.NowPlayingIndicator
 
 @Composable
 fun FullPlayerScreen(viewModel: MainViewModel) {
@@ -37,61 +40,98 @@ fun FullPlayerScreen(viewModel: MainViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
+            // Header with Close & Menu
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { viewModel.closeFullPlayer() }) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close")
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close", modifier = Modifier.size(28.dp))
                 }
-                Text("Now Playing", style = MaterialTheme.typography.bodyMedium)
+                Text("Now Playing", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold))
                 IconButton(onClick = { /* menu */ }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                    Icon(Icons.Default.MoreVert, contentDescription = "Menu", modifier = Modifier.size(28.dp))
                 }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            AsyncImage(
-                model = currentSong?.catboxThumb,
-                contentDescription = null,
-                modifier = Modifier
-                    .aspectRatio(1f)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp)),
-                contentScale = ContentScale.Crop
-            )
+            // Album Art with Animation
+            AnimatedContent(
+                targetState = currentSong?.videoId,
+                label = "albumArtChange"
+            ) { targetId ->
+                Box(
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = currentSong?.catboxThumb,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    
+                    // Playing Indicator Overlay
+                    if (isPlaying) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(NowPlayingIndicator.copy(alpha = 0.15f))
+                        )
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.height(48.dp))
             
+            // Song Title and Artist
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = currentSong?.title ?: "",
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        maxLines = 1
+                        maxLines = 2
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = currentSong?.artist ?: "",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = { currentSong?.let { viewModel.toggleFavorite(it) } }) {
+                
+                // Favorite Button
+                IconButton(
+                    onClick = { currentSong?.let { viewModel.toggleFavorite(it) } },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = if (currentSong?.isFavorite == true) NowPlayingIndicator.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = CircleShape
+                        )
+                ) {
                     Icon(
                         imageVector = if (currentSong?.isFavorite == true) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Favorite",
-                        tint = if (currentSong?.isFavorite == true) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                        tint = if (currentSong?.isFavorite == true) NowPlayingIndicator else LocalContentColor.current,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
             
+            // Progress Slider with Time Display
             var sliderPosition by remember { mutableStateOf<Float?>(null) }
             val currentPos = sliderPosition ?: position.toFloat()
             val maxPos = duration.toFloat().takeIf { it > 0 } ?: 1f
@@ -104,10 +144,19 @@ fun FullPlayerScreen(viewModel: MainViewModel) {
                     sliderPosition = null
                 },
                 valueRange = 0f..maxPos,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = NowPlayingIndicator,
+                    activeTrackColor = NowPlayingIndicator
+                )
             )
+            
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(formatTime(currentPos.toLong()), style = MaterialTheme.typography.labelSmall)
@@ -116,38 +165,65 @@ fun FullPlayerScreen(viewModel: MainViewModel) {
             
             Spacer(modifier = Modifier.weight(1f))
             
+            // Playback Controls
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { viewModel.playerController.prev() }) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(48.dp))
+                // Previous Button
+                IconButton(
+                    onClick = { viewModel.playerController.prev() },
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                ) {
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(32.dp))
                 }
                 
+                // Play/Pause Button (Large)
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(80.dp).clickable { 
-                        if (isPlaying) viewModel.playerController.pause() 
-                        else viewModel.playerController.play() 
-                    }
+                    color = NowPlayingIndicator,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clickable { 
+                            if (isPlaying) viewModel.playerController.pause() 
+                            else viewModel.playerController.play() 
+                        }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = "Play/Pause",
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(40.dp),
+                            tint = androidx.compose.ui.graphics.Color.White
                         )
                     }
                 }
                 
-                IconButton(onClick = { viewModel.playerController.next() }) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(48.dp))
+                // Next Button
+                IconButton(
+                    onClick = { viewModel.playerController.next() },
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                ) {
+                    Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(32.dp))
                 }
             }
-            
-            Spacer(modifier = Modifier.height(48.dp))
+        }
+    }
+}
+
+private fun formatTime(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%d:%02d", minutes, seconds)
+}
         }
     }
 }

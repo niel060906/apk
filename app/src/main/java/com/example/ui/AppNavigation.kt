@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,9 +33,40 @@ fun AppNavigation() {
     
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    val currentRoute = navBackStackEntry?.destination?.route ?: "home"
     
     val showFullPlayer by viewModel.showFullPlayer.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    
+    var showErrorDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            showErrorDialog = true
+        }
+    }
+
+    // Error Dialog
+    if (showErrorDialog && errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showErrorDialog = false
+                viewModel.clearError()
+            },
+            title = { Text("Error") },
+            text = { Text(errorMessage!!) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showErrorDialog = false
+                        viewModel.clearError()
+                    }
+                ) {
+                    Text("Dismiss")
+                }
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -61,6 +93,12 @@ fun AppNavigation() {
                             selected = currentRoute == "favorites",
                             onClick = { navController.navigate("favorites") }
                         )
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Info, contentDescription = "About") },
+                            label = { Text("About") },
+                            selected = currentRoute == "about",
+                            onClick = { navController.navigate("about") }
+                        )
                     }
                 }
             }
@@ -69,7 +107,11 @@ fun AppNavigation() {
         NavHost(
             navController = navController,
             startDestination = "home",
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { slideInHorizontally(initialOffsetX = { 300 }) + fadeIn() },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { -300 }) + fadeOut() },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { -300 }) + fadeIn() },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { 300 }) + fadeOut() }
         ) {
             composable("home") {
                 HomeScreen(viewModel = viewModel)
@@ -80,12 +122,15 @@ fun AppNavigation() {
             composable("favorites") {
                 com.example.ui.favorite.FavoriteScreen(viewModel = viewModel)
             }
+            composable("about") {
+                com.example.ui.about.AboutMeScreen()
+            }
         }
         
         AnimatedVisibility(
             visible = showFullPlayer,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it })
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
         ) {
             FullPlayerScreen(viewModel = viewModel)
         }

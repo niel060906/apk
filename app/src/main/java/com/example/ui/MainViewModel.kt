@@ -23,6 +23,12 @@ class MainViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     val allSongs: StateFlow<List<Song>> = songRepository.getAllSongs()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -45,7 +51,15 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
-            songRepository.syncWithRemote()
+            try {
+                _isLoading.value = true
+                songRepository.syncWithRemote()
+                _errorMessage.value = null
+            } catch (e: Exception) {
+                _errorMessage.value = "Failed to load songs: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
@@ -56,17 +70,32 @@ class MainViewModel(
     fun playSong(song: Song) {
         val list = allSongs.value.ifEmpty { listOf(song) }
         val index = list.indexOfFirst { it.videoId == song.videoId }.takeIf { it >= 0 } ?: 0
-        playerController.playSongs(list, index)
+        
+        playerController.playSongs(list, index) { error ->
+            _errorMessage.value = error
+        }
         
         viewModelScope.launch {
-            songRepository.markAsPlayed(song.videoId)
+            try {
+                songRepository.markAsPlayed(song.videoId)
+            } catch (e: Exception) {
+                _errorMessage.value = "Error marking song as played: ${e.message}"
+            }
         }
     }
 
     fun toggleFavorite(song: Song) {
         viewModelScope.launch {
-            songRepository.toggleFavorite(song.videoId, !song.isFavorite)
+            try {
+                songRepository.toggleFavorite(song.videoId, !song.isFavorite)
+            } catch (e: Exception) {
+                _errorMessage.value = "Error updating favorite: ${e.message}"
+            }
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 
     fun openFullPlayer() { _showFullPlayer.value = true }
